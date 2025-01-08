@@ -1,0 +1,12 @@
+trigger:
+  branches:
+    include:
+      - main  # 當推送到 main 分支時觸發 pipeline
+
+pool:
+  name: agent-test  # 指定使用的代理池
+
+steps:
+  - script: |
+      echo "This is a test file generated at $(date "+%Y%m%d%H%M%S")" > testfile.txt
+    displayName: 'Generate timestamped text file'
