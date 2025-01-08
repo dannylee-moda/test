@@ -1,12 +1,35 @@
-trigger:
-  branches:
-    include:
-      - main  # 當推送到 main 分支時觸發 pipeline
+name: Deploy to Azure Pipeline Agent Pool
 
-pool:
-  name: agent-test  # 指定使用的代理池
+# 觸發條件：當 main 分支有變動時觸發
+on:
+  push:
+    branches:
+      - main  # 當推送到 main 分支時觸發
 
-steps:
-  - script: |
-      echo "This is a test file generated at $(date "+%Y%m%d%H%M%S")" > testfile.txt
-    displayName: 'Generate timestamped text file'
+jobs:
+  deploy:
+    runs-on: ubuntu-latest  # 設定工作環境，這裡選擇了 Ubuntu 作為例子
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2  # 檢出代碼
+    
+    - name: Set up Azure CLI
+      uses: azure/setup-azurecli@v1
+      with:
+        azcliversion: 'latest'
+    
+    - name: Login to Azure
+      run: |
+        echo "${{ secrets.AZURE_CREDENTIALS }}" > azurecreds.json
+        az login --service-principal --username $(jq -r .clientId azurecreds.json) --password $(jq -r .clientSecret azurecreds.json) --tenant $(jq -r .tenantId azurecreds.json)
+      env:
+        AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}  # 用於存放 Azure Service Principal 的秘密 (設定在 GitHub Secrets)
+
+    - name: Trigger Azure Pipeline
+      run: |
+        az pipelines run --name "YourPipelineName" --org https://dev.azure.com/yourorg --project "yourproject" --branch main --service-connection "your-service-connection"
+        # 使用 Azure CLI 命令觸發在 Azure DevOps 中的 pipeline，這裡需要設定你的 pipeline 名稱和其他參數
+    
+    - name: Notify deployment completion
+      run: echo "Deployment to Azure Agent Pool completed"
